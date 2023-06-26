@@ -11,8 +11,12 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.logicmonitor.sdk.data.Configuration;
 import com.logicmonitor.sdk.data.model.*;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.zip.GZIPOutputStream;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.SneakyThrows;
@@ -84,11 +88,12 @@ public abstract class BatchingCache {
         response, response.getStatusCode(), response.getHeaders().toString());
 
     if (response != null) {
-      if (response.getStatusCode() == 200
-          || response.getStatusCode() == 202
-          || response.getStatusCode() == 207)
+      if ((response.getStatusCode() == 200
+              || response.getStatusCode() == 202
+              || response.getStatusCode() == 207)
+          && apiCallback != null)
         apiCallback.onSuccess(response, response.getStatusCode(), response.getHeaders());
-      if (response.getStatusCode() >= 300)
+      if (response.getStatusCode() >= 300 && apiCallback != null)
         apiCallback.onFailure(apiException, response.getStatusCode(), response.getHeaders());
     }
   }
@@ -156,13 +161,19 @@ public abstract class BatchingCache {
    * @throws ApiException
    */
   public ApiResponse<String> makeRequest(
-      final List body, final String path, final String method, final boolean create, boolean async)
-      throws ApiException {
+      final List body,
+      final String path,
+      final String method,
+      final boolean create,
+      boolean async,
+      boolean gZip)
+      throws ApiException, IOException {
 
     final ApiClient apiClient = new ApiClient();
     final Pair pair = new Pair("create", String.valueOf(create));
     final List<Pair> queryParams = new ArrayList<>();
     final List<Pair> collectionQueryParams = new ArrayList<>();
+    Call call;
     if (create && path == PATH) {
       queryParams.add(pair);
     }
@@ -174,26 +185,74 @@ public abstract class BatchingCache {
 
     headersParams.put("Accept", apiClient.selectHeaderContentType(localVarContentTypes));
     headersParams.put("Content-Type", apiClient.selectHeaderContentType(localVarContentTypes));
-    headersParams.put(
-        "Authorization", Configuration.getAuthToken(new Gson().toJson(body), method, path));
+    if (method.equalsIgnoreCase("POST")) {
+      headersParams.put(
+          "Authorization", Configuration.getAuthToken(new Gson().toJson(body), method, path));
+    } else {
+      headersParams.put(
+          "Authorization",
+          Configuration.getAuthToken(new Gson().toJson(body.get(0)), method, path));
+    }
 
     log.debug("Request: " + new Gson().toJson(body));
 
     final String companyUrl = Configuration.setCompany();
     apiClient.setBasePath(companyUrl);
-    Call call =
-        apiClient.buildCall(
-            apiClient.getBasePath(),
-            path,
-            method,
-            queryParams,
-            collectionQueryParams,
-            body,
-            headersParams,
-            cookieParams,
-            formParams,
-            authSetting,
-            apiCallback);
+    /*We need this loop as we are using "okhttp3" so body with patch and put is not executed properly, so body.get(0) i.e. object for the same is send.
+    when we are sending list as a body for PATCH and PUT it gives "bad request" as internally we have serialisation for body (in okhttp3) for which body is not formed correctly.*/
+    if (method.equalsIgnoreCase("PUT") || method.equalsIgnoreCase("PATCH")) {
+      call =
+          apiClient.buildCall(
+              apiClient.getBasePath(),
+              path,
+              method,
+              queryParams,
+              collectionQueryParams,
+              body.get(0),
+              headersParams,
+              cookieParams,
+              formParams,
+              authSetting,
+              apiCallback);
+    } else {
+      call =
+          apiClient.buildCall(
+              apiClient.getBasePath(),
+              path,
+              method,
+              queryParams,
+              collectionQueryParams,
+              body,
+              headersParams,
+              cookieParams,
+              formParams,
+              authSetting,
+              apiCallback);
+    }
+
+    if (gZip) {
+      headersParams.put("Content-Encoding", "gzip");
+      ByteArrayOutputStream out = null;
+      GZIPOutputStream gzip = null;
+      try {
+
+        byte[] bytes = call.request().body().toString().getBytes(StandardCharsets.UTF_8);
+        out = new ByteArrayOutputStream(bytes.length);
+        gzip = new GZIPOutputStream(out);
+        gzip.write(bytes);
+
+      } catch (Exception e) {
+        log.error(e.getMessage());
+      } finally {
+        if (gzip != null) {
+          gzip.flush();
+          gzip.close();
+        }
+        if (out != null) {
+          out.close();
+        }
+      }
+    }
     Type localVarReturnType = new TypeToken<String>() {}.getType();
 
     ApiResponse<String> syncReponse = null;

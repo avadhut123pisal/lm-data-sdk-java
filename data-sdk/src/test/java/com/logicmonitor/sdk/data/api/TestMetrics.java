@@ -14,7 +14,11 @@ import com.logicmonitor.sdk.data.model.DataSourceInstance;
 import com.logicmonitor.sdk.data.model.Input;
 import com.logicmonitor.sdk.data.model.MetricsInput;
 import com.logicmonitor.sdk.data.model.Resource;
+import com.logicmonitor.sdk.data.validator.DataSourceInstanceValidator;
+import com.logicmonitor.sdk.data.validator.DataSourceValidator;
+import com.logicmonitor.sdk.data.validator.ResourceValidator;
 import com.logicmonitor.sdk.data.validator.Validator;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -23,9 +27,11 @@ import java.util.Map;
 import java.util.Queue;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
 import org.mockito.Mockito;
 import org.openapitools.client.ApiClient;
 import org.openapitools.client.ApiException;
+import org.openapitools.client.ApiResponse;
 import org.openapitools.client.model.RestDataPointV1;
 import org.openapitools.client.model.RestDataSourceInstanceV1;
 import org.openapitools.client.model.RestMetricsV1;
@@ -122,7 +128,7 @@ public class TestMetrics {
   }
 
   @Test(expected = Exception.class)
-  public void testCreateRestMetricsBody() {
+  public void testCreateRestMetricsBody() throws IOException {
 
     List<RestMetricsV1> expected = new ArrayList<>();
     RestMetricsV1 restMetrics;
@@ -162,7 +168,7 @@ public class TestMetrics {
   }
 
   @Test(expected = ApiException.class)
-  public void testSingleRequest() throws ApiException {
+  public void testSingleRequest() throws ApiException, IOException {
     final MetricsInput input = new MetricsInput();
     input.setResource(resource);
     input.setDataSource(dataSource);
@@ -183,7 +189,7 @@ public class TestMetrics {
   }
 
   @Test(expected = Exception.class)
-  public void testCreateTrue() {
+  public void testCreateTrue() throws IOException {
 
     List<RestMetricsV1> expected = new ArrayList<>();
     RestMetricsV1 restMetrics;
@@ -214,5 +220,31 @@ public class TestMetrics {
         payloadCache = new HashMap<>();
     Mockito.when(metrics.getPayloadCache()).thenReturn(payloadCache);
     metrics.createRestMetricsBody(resourceBody);
+  }
+
+  @Test(expected = Exception.class)
+  public void TestUpdateResourceProperties() throws ApiException, IOException {
+    ResourceValidator resourceValidator = Mockito.mock(ResourceValidator.class);
+    metrics.setResourceValidator(resourceValidator);
+    ApiResponse<String> response =
+        metrics.updateResourceProperties(resourceIds, resource.getProperties(), false);
+    Assertions.assertEquals(response.getStatusCode(), 400);
+  }
+
+  @Test(expected = Exception.class)
+  public void TestUpdateInstanceProperties() throws ApiException, IOException {
+    HashMap<String, String> instanceProperties = new HashMap<>();
+    instanceProperties.put("InstanceProperty", "InstanceProperty");
+    ResourceValidator resourceValidator = Mockito.mock(ResourceValidator.class);
+    DataSourceInstanceValidator dataSourceInstanceValidator =
+        Mockito.mock(DataSourceInstanceValidator.class);
+    DataSourceValidator dataSourceValidator = Mockito.mock(DataSourceValidator.class);
+    metrics.setResourceValidator(resourceValidator);
+    metrics.setDataSourceInstanceValidator(dataSourceInstanceValidator);
+    metrics.setDataSourceValidator(dataSourceValidator);
+    ApiResponse<String> response =
+        metrics.updateInstanceProperties(
+            resourceIds, dataSourceName, null, instanceName, instanceProperties, false);
+    Assertions.assertEquals(response.getStatusCode(), 400);
   }
 }
