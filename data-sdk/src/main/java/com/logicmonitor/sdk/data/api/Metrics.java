@@ -6,7 +6,6 @@
  * one at https://mozilla.org/MPL/2.0/.
  */
 package com.logicmonitor.sdk.data.api;
-
 import com.logicmonitor.sdk.data.ApiClientUserAgent;
 import com.logicmonitor.sdk.data.Configuration;
 import com.logicmonitor.sdk.data.Constant;
@@ -32,31 +31,22 @@ import org.openapitools.client.api.LmMetricIngestApi;
 import org.openapitools.client.model.RestDataPointV1;
 import org.openapitools.client.model.RestDataSourceInstanceV1;
 import org.openapitools.client.model.RestMetricsV1;
-
 /** This Class is used to Send Metrics.This class is used by user to interact with LogicMonitor. */
 @Slf4j
 public class Metrics extends BatchingCache {
-
   private static final String PATH = "/v2/metric/ingest";
-
   private static final String METHOD = "POST";
-  private final ApiClientUserAgent userAgent = new ApiClientUserAgent();
-
+  // camelcase variable naming userAgent
+  private final ApiClientUserAgent useragent = new ApiClientUserAgent();
   private ApiClient apiClient = new ApiClient();
-
   private Validator validator = new Validator();
-
   private ResourceValidator resourceValidator = new ResourceValidator();
-
   private DataSourceValidator dataSourceValidator = new DataSourceValidator();
-
   private DataSourceInstanceValidator dataSourceInstanceValidator =
       new DataSourceInstanceValidator();
-
   public Metrics() {
     this(Configuration.getConfiguration());
   }
-
   /**
    * @param conf This is configuration variable
    * @param interval This is interval
@@ -66,7 +56,6 @@ public class Metrics extends BatchingCache {
     super(conf, interval, batch);
     apiClient.setBasePath(conf.setCompany());
   }
-
   /**
    * @param conf This is configuration variable
    * @param interval This is interval
@@ -78,7 +67,6 @@ public class Metrics extends BatchingCache {
     super(conf, interval, batch, apiCallback);
     apiClient.setBasePath(conf.setCompany());
   }
-
   /**
    * @param conf This is configuration variable
    * @param apiCallback ApiCallback Attribute
@@ -87,13 +75,11 @@ public class Metrics extends BatchingCache {
     super(conf, apiCallback);
     apiClient.setBasePath(conf.setCompany());
   }
-
   /** @param conf This is configuration variable */
   public Metrics(final Configuration conf) {
     super(conf);
     apiClient.setBasePath(conf.setCompany());
   }
-
   /**
    * @param input Metrics Input Variable
    * @return ApiResponse Retruen ApiResponse
@@ -103,7 +89,6 @@ public class Metrics extends BatchingCache {
     List<RestMetricsV1> listOfRestMetricsV1 = new ArrayList<>();
     BatchingCache batchingCache = new Metrics();
     List<RestDataPointV1> dataPoints = new ArrayList<>();
-
     RestDataPointV1 restDataPoint =
         new RestDataPointV1()
             .dataPointAggregationType(input.getDataPoint().getAggregationType())
@@ -113,9 +98,7 @@ public class Metrics extends BatchingCache {
             .values(input.getValues())
             .percentileValue(input.getDataPoint().getPercentileValue());
     dataPoints.add(restDataPoint);
-
     List<RestDataSourceInstanceV1> instances = new ArrayList<>();
-
     RestDataSourceInstanceV1 restInstance =
         new RestDataSourceInstanceV1()
             .dataPoints(dataPoints)
@@ -124,7 +107,6 @@ public class Metrics extends BatchingCache {
             .instanceName(input.getDataSourceInstance().getName())
             .instanceProperties(input.getDataSourceInstance().getProperties());
     instances.add(restInstance);
-
     RestMetricsV1 restMetrics =
         new RestMetricsV1()
             .resourceIds(input.getResource().getIds())
@@ -136,9 +118,7 @@ public class Metrics extends BatchingCache {
             .dataSourceGroup(input.getDataSource().getGroup())
             .dataSourceId(input.getDataSource().getId())
             .instances(instances);
-
     listOfRestMetricsV1.add(restMetrics);
-
     return batchingCache.makeRequest(
         listOfRestMetricsV1,
         PATH,
@@ -147,7 +127,6 @@ public class Metrics extends BatchingCache {
         Configuration.getAsyncRequest(),
         Configuration.getgZip());
   }
-
   /**
    * @param resource This is variable for Resource properties.
    * @param dataSource This is variable for dataSource properties.
@@ -177,7 +156,6 @@ public class Metrics extends BatchingCache {
     input.setDataSource(dataSource);
     input.setDataSourceInstance(dataSourceInstance);
     input.setDataPoint(dataPoint);
-
     for (final Entry<String, String> item : values.entrySet()) {
       input.getValues().put(item.getKey(), item.getValue());
     }
@@ -188,7 +166,6 @@ public class Metrics extends BatchingCache {
       return Optional.ofNullable(singleRequest(input));
     }
   }
-
   /**
    * @param body Nested MAP as a body
    * @return
@@ -199,12 +176,10 @@ public class Metrics extends BatchingCache {
               Map<DataSource, Map<DataSourceInstance, Map<DataPoint, Map<String, String>>>>>
           body)
       throws IOException {
-
     final List<RestMetricsV1> listOfRestMetricsV1CreateTrue = new ArrayList<>();
     final List<RestMetricsV1> listOfRestMetricsV1CreateFalse = new ArrayList<>();
     final List<RestDataPointV1> dataPoints = new ArrayList<>();
     ApiResponse<String> response = null;
-
     Resource removeElement = null;
     RestMetricsV1 restMetrics = new RestMetricsV1();
     for (final Entry<
@@ -214,22 +189,30 @@ public class Metrics extends BatchingCache {
       removeElement = resource;
       DataSource dataSource = new DataSource();
       final List<RestDataSourceInstanceV1> instances = new ArrayList<>();
-
       for (final Entry<DataSource, Map<DataSourceInstance, Map<DataPoint, Map<String, String>>>>
           ds : item.getValue().entrySet()) {
         dataSource = ds.getKey();
-
         for (final Entry<DataSourceInstance, Map<DataPoint, Map<String, String>>> ins :
             ds.getValue().entrySet()) {
           final DataSourceInstance dataSourceInstance = ins.getKey();
-
           for (final Entry<DataPoint, Map<String, String>> dp : ins.getValue().entrySet()) {
             final DataPoint dataPoint = dp.getKey();
             final Map<String, String> valuePairs = new HashMap<>();
             for (final Entry<String, String> value : dp.getValue().entrySet()) {
               valuePairs.put(value.getKey(), value.getValue());
             }
-
+            if(dataPoint.getName().equals(dataPoint.getType())){
+              System.out.println("Should use StringUtils");
+            }
+            if(StringUtils.isEmpty(dataPoint.getName())){
+              if(StringUtils.isEmpty(dataPoint.getType())){
+                  if(StringUtils.length(dataPoint.getName()) > 1){
+                      if(StringUtils.length(dataPoint.getType()) > 2){
+                          System.out.println("all if conditions satisfied");
+                      }
+                  }
+              }
+            }
             final RestDataPointV1 restDataPoint =
                 new RestDataPointV1()
                     .dataPointAggregationType(dataPoint.getAggregationType())
@@ -240,7 +223,6 @@ public class Metrics extends BatchingCache {
                     .percentileValue(dataPoint.getPercentileValue());
             dataPoints.add(restDataPoint);
           }
-
           final RestDataSourceInstanceV1 restInstance =
               new RestDataSourceInstanceV1()
                   .dataPoints(dataPoints)
@@ -251,7 +233,6 @@ public class Metrics extends BatchingCache {
           instances.add(restInstance);
         }
       }
-
       restMetrics =
           new RestMetricsV1()
               .resourceIds(resource.getIds())
@@ -264,7 +245,6 @@ public class Metrics extends BatchingCache {
               .singleInstanceDS(dataSource.getSingleInstanceDS())
               .dataSourceId(dataSource.getId())
               .instances(instances);
-
       if (resource.isCreate()) {
         listOfRestMetricsV1CreateTrue.add(restMetrics);
       } else {
@@ -272,7 +252,8 @@ public class Metrics extends BatchingCache {
       }
     }
     try {
-      if (null != listOfRestMetricsV1CreateTrue && listOfRestMetricsV1CreateTrue.size() > 0) {
+      // can throw NPE
+      if (listOfRestMetricsV1CreateTrue.size() > 0) {
         response =
             makeRequest(
                 listOfRestMetricsV1CreateTrue,
@@ -301,7 +282,6 @@ public class Metrics extends BatchingCache {
     }
     getPayloadCache().remove(removeElement);
   }
-
   /** return void. */
   @SneakyThrows
   @Override
@@ -315,7 +295,6 @@ public class Metrics extends BatchingCache {
       ByteArrayOutputStream out = null;
       GZIPOutputStream gzip = null;
       try {
-
         byte[] bytes = payloadCache.toString().getBytes(StandardCharsets.UTF_8);
         byte[] singleRequestBytes = singleRequest.toString().getBytes(StandardCharsets.UTF_8);
         out = new ByteArrayOutputStream(bytes.length + singleRequestBytes.length);
@@ -358,7 +337,6 @@ public class Metrics extends BatchingCache {
             dataPoint.put(singleRequest.getDataPoint(), new HashMap<>());
           }
           final Map<String, String> value = dataPoint.get(singleRequest.getDataPoint());
-
           for (final Entry<String, String> item : singleRequest.getValues().entrySet()) {
             value.put(item.getKey(), item.getValue());
           }
@@ -372,7 +350,6 @@ public class Metrics extends BatchingCache {
       doRequest();
     }
   }
-
   /**
    * @param resourceIds
    * @param resourceProperties
@@ -384,23 +361,18 @@ public class Metrics extends BatchingCache {
       Map<String, String> resourceIds, Map<String, String> resourceProperties, boolean patch)
       throws ApiException, IOException {
     BatchingCache batchingCache = new Metrics();
-
     String path = "/resource_property/ingest";
     String method = patch ? "PATCH" : "PUT";
     List<RestMetricsV1> listOfRestMetricsV1 = new ArrayList<>();
-
     if (resourceIds != null) {
       resourceValidator.checkResourceIdsValidation(resourceIds);
     }
-
     if (resourceProperties != null) {
       resourceValidator.checkResourcePropertiesValidation(resourceProperties);
     }
     RestMetricsV1 restMetrics =
         new RestMetricsV1().resourceIds(resourceIds).resourceProperties(resourceProperties);
-
     listOfRestMetricsV1.add(restMetrics);
-
     return batchingCache.makeRequest(
         listOfRestMetricsV1,
         path,
@@ -409,7 +381,6 @@ public class Metrics extends BatchingCache {
         Configuration.getAsyncRequest(),
         Configuration.getgZip());
   }
-
   /**
    * @param resourceIds
    * @param dataSourceName
@@ -428,7 +399,6 @@ public class Metrics extends BatchingCache {
       Map<String, String> instanceProperties,
       boolean patch)
       throws ApiException, IOException {
-
     BatchingCache batchingCache = new Metrics();
     List<RestMetrics> restMetricsList = new ArrayList<>();
     String path = "/instance_property/ingest";
@@ -438,16 +408,13 @@ public class Metrics extends BatchingCache {
     if (instanceName != null) dataSourceInstanceValidator.checkInstanceNameValidation(instanceName);
     if (instanceProperties != null)
       dataSourceInstanceValidator.checkInstancePropertiesValidation(instanceProperties);
-
     RestMetrics restMetrics = new RestMetrics();
     restMetrics.setResourceIds(resourceIds);
     restMetrics.setDataSource(dataSourceName);
     restMetrics.setDataSourceDisplayName(dataSourceDisplayName);
     restMetrics.setInstanceName(instanceName);
     restMetrics.setInstanceProperties(instanceProperties);
-
     restMetricsList.add(restMetrics);
-
     return batchingCache.makeRequest(
         restMetricsList,
         path,
@@ -456,7 +423,6 @@ public class Metrics extends BatchingCache {
         Configuration.getAsyncRequest(),
         Configuration.getgZip());
   }
-
   /** return void. */
   @SneakyThrows
   @Override
@@ -467,22 +433,18 @@ public class Metrics extends BatchingCache {
   public void setValidator(Validator validator) {
     this.validator = validator;
   }
-
   /** @param client */
   public void setApiClient(ApiClient client) {
     this.apiClient = client;
   }
-
   /** @param resourceValidator */
   public void setResourceValidator(ResourceValidator resourceValidator) {
     this.resourceValidator = resourceValidator;
   }
-
   /** @param dataSourceValidator */
   public void setDataSourceValidator(DataSourceValidator dataSourceValidator) {
     this.dataSourceValidator = dataSourceValidator;
   }
-
   /** @param dataSourceInstanceValidator */
   public void setDataSourceInstanceValidator(
       DataSourceInstanceValidator dataSourceInstanceValidator) {
